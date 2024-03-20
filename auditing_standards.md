@@ -237,3 +237,34 @@ Crates with this criteria contain very dangerous unsafe rust code.
     *   Undefined behavior may be possible under common circumstances.
 *   Most crates that try to be sound but don't quite make the cut go in `ub-risk-3`, not here. These crates are wildly unsafe, and the only time we should use them is when they are a necessary evil.
 *   Everything worse than `ub-risk-3` goes in here and we should do our best to avoid using them.
+
+## Criteria-agnostic guidelines
+
+### Delta audits
+
+Some additional guidelines apply to delta audits (e.g. when auditing only the
+changes from version 1.2.3 to version 1.2.4, instead of auditing the full source
+code of version 1.2.4).  In particular, delta audits need to be based on an
+actual, earlier, baseline audit:
+
+* For example, a delta audit of a change that doesn't add any `unsafe` should
+  re-certify the previous `ub-risk-N` instead of certifying `ub-risk-0`.
+* In general, delta audits must never lower the `UB-risk-N` value from the
+  previous audit, or downgrade `crypto-safe` to `does-not-contain-crypto`.
+
+### Conditionally-compiled code
+
+Some crates may contain code that may be excluded in some build environments.
+Some non-exhaustive examples:
+
+* Code controlled by crate features (e.g. `#[cfg(feature = "foo")]`
+* Code applicable only to certain targets (e.g. `#[cfg(target_arch = "powerpc")]`
+  or `#[cfg(target_os = "solaris")]`)
+
+Audits need to certify all such code, because:
+
+* It is impossible to predict what code may be enabled by consumers of `audits.toml`.
+  For example, Chromium may rely on `audits.toml` imported from Fuchsia, even
+  though Chromium targets additional operating systems.
+* `cargo vet` has no way to indicate partial audits - see:
+  https://github.com/mozilla/cargo-vet/issues/380
